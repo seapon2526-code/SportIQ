@@ -466,14 +466,39 @@ RESPONDE EXACTAMENTE EN ESTE FORMATO JSON (solo JSON, sin texto extra, sin backt
 function renderResults(text, team1, team2) {
   let data;
   try {
-    const clean = text.replace(/```json|```/g, '').trim();
+    // Try multiple cleaning strategies
+    let clean = text.replace(/```json|```/g, '').trim();
+    // Find JSON object in text
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if (jsonMatch) clean = jsonMatch[0];
     data = JSON.parse(clean);
   } catch(e) {
-    // Fallback: show raw text
-    document.getElementById('verdictTeam').textContent = 'Ver análisis abajo';
-    document.getElementById('verdictConf').textContent = '';
-    document.getElementById('fullAnalysis').textContent = text;
-    return;
+    // Try to extract key fields with regex fallback
+    try {
+      data = {
+        ganador: text.match(/"ganador"\s*:\s*"([^"]+)"/)?.[1] || team1,
+        confianza: text.match(/"confianza"\s*:\s*"([^"]+)"/)?.[1] || '—',
+        razon_principal: text.match(/"razon_principal"\s*:\s*"([^"]+)"/)?.[1] || '',
+        moneyline_pick: text.match(/"moneyline_pick"\s*:\s*"([^"]+)"/)?.[1] || '—',
+        moneyline_confianza: text.match(/"moneyline_confianza"\s*:\s*"([^"]+)"/)?.[1] || '—',
+        over_under_pick: text.match(/"over_under_pick"\s*:\s*"([^"]+)"/)?.[1] || '—',
+        over_under_confianza: text.match(/"over_under_confianza"\s*:\s*"([^"]+)"/)?.[1] || '—',
+        over_under_razon: text.match(/"over_under_razon"\s*:\s*"([^"]+)"/)?.[1] || '',
+        spread_pick: text.match(/"spread_pick"\s*:\s*"([^"]+)"/)?.[1] || '—',
+        spread_confianza: text.match(/"spread_confianza"\s*:\s*"([^"]+)"/)?.[1] || '—',
+        confianza_global: text.match(/"confianza_global"\s*:\s*"([^"]+)"/)?.[1] || '—',
+        parlay: text.match(/"parlay"\s*:\s*"([^"]+)"/)?.[1] || '—',
+        analisis_completo: text.match(/"analisis_completo"\s*:\s*"([\s\S]+?)(?:",\s*"factores|",\s*"resumen)/)?.[1]?.replace(/\\n/g, '\n') || text,
+        factores_riesgo: text.match(/"factores_riesgo"\s*:\s*"([^"]+)"/)?.[1] || '',
+        resumen: text.match(/"resumen"\s*:\s*"([^"]+)"/)?.[1] || ''
+      };
+    } catch(e2) {
+      // Last resort: show raw text nicely
+      document.getElementById('verdictTeam').textContent = team1;
+      document.getElementById('verdictConf').textContent = 'Ver análisis completo abajo';
+      document.getElementById('fullAnalysis').textContent = text;
+      return;
+    }
   }
 
   document.getElementById('verdictTeam').textContent = data.ganador || '—';
