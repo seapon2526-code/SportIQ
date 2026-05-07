@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="SportIQ"/>
+<meta name="theme-color" content="#0a0a0f"/>
+<title>SportIQ — Análisis Deportivo IA</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --red: #ff2d2d;
+    --red2: #ff6b00;
+    --bg: #080810;
+    --card: #10101a;
+    --border: #1e1e2e;
+    --text: #e2e2f0;
+    --muted: #55556a;
+    --green: #00e676;
+    --yellow: #ffd600;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; overflow-x: hidden; }
+
+  /* Animated BG */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(255,45,45,0.12), transparent),
+                radial-gradient(ellipse 60% 40% at 90% 90%, rgba(255,107,0,0.08), transparent);
+    pointer-events: none;
+  }
+
+  .wrap { max-width: 540px; margin: 0 auto; padding: 0 16px 80px; position: relative; z-index: 1; }
+
+  /* Header */
+  .header { text-align: center; padding: 48px 0 32px; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: clamp(56px, 18vw, 88px); letter-spacing: 4px; line-height: 1;
+    background: linear-gradient(135deg, #fff 0%, var(--red) 60%, var(--red2) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .tagline { font-size: 10px; letter-spacing: 4px; color: var(--muted); margin-top: 8px; text-transform: uppercase; }
+
+  /* Sport pills */
+  .sport-wrap { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 20px; scrollbar-width: none; }
+  .sport-wrap::-webkit-scrollbar { display: none; }
+  .sport-pill { flex-shrink: 0; padding: 8px 16px; border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    cursor: pointer; transition: all 0.2s; text-transform: uppercase; border-radius: 2px; }
+  .sport-pill.active { background: var(--red); border-color: var(--red); color: #fff; }
+
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); padding: 20px; margin-bottom: 12px; border-radius: 4px; }
+  .card-label { font-size: 9px; letter-spacing: 3px; color: var(--red); text-transform: uppercase; margin-bottom: 12px; font-weight: 500; }
+
+  /* Inputs */
+  input, textarea, select {
+    width: 100%; background: #08080f; border: 1px solid var(--border);
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px;
+    padding: 12px 14px; outline: none; border-radius: 2px; transition: border-color 0.2s;
+    -webkit-appearance: none; appearance: none;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--red); }
+  textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+  select option { background: #10101a; }
+  ::placeholder { color: var(--muted); }
+
+  .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .input-full { margin-bottom: 10px; }
+  .input-hint { font-size: 10px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+
+  /* Toggle sections */
+  .toggle-btn { width: 100%; background: transparent; border: 1px dashed var(--border);
+    color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px;
+    padding: 10px; cursor: pointer; text-align: left; display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 8px; transition: all 0.2s; }
+  .toggle-btn:hover { border-color: var(--red); color: var(--red); }
+  .extra-fields { display: none; }
+  .extra-fields.open { display: block; }
+
+  /* CTA */
+  .cta { width: 100%; padding: 18px; background: linear-gradient(135deg, var(--red), var(--red2));
+    border: none; color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 22px;
+    letter-spacing: 3px; cursor: pointer; border-radius: 4px; transition: opacity 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; }
+  .cta:disabled { opacity: 0.4; cursor: not-allowed; }
+  .cta:not(:disabled):active { opacity: 0.8; transform: scale(0.99); }
+
+  /* Loader */
+  .loader { display: none; text-align: center; padding: 40px 20px; }
+  .loader.show { display: block; }
+  .loader-bar { height: 2px; background: linear-gradient(90deg, transparent, var(--red), var(--red2), transparent);
+    animation: slide 1.2s ease-in-out infinite; margin-bottom: 16px; }
+  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+  .loader-text { font-size: 11px; letter-spacing: 2px; color: var(--muted); }
+  .loader-steps { margin-top: 12px; }
+  .loader-step { font-size: 10px; color: var(--muted); padding: 3px 0; opacity: 0; animation: fadeIn 0.5s forwards; }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  /* Results */
+  .results { display: none; }
+  .results.show { display: block; }
+
+  .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; color: var(--red); }
+
+  /* Verdict box */
+  .verdict-box { background: linear-gradient(135deg, rgba(255,45,45,0.12), rgba(255,107,0,0.08));
+    border: 1px solid rgba(255,45,45,0.3); padding: 20px; margin-bottom: 12px; border-radius: 4px; }
+  .verdict-team { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 2px; color: #fff; }
+  .verdict-conf { font-size: 11px; letter-spacing: 2px; color: var(--red); margin-top: 4px; }
+
+  /* Pick cards */
+  .picks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .pick-card { background: var(--card); border: 1px solid var(--border); padding: 14px; border-radius: 4px; }
+  .pick-label { font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+  .pick-value { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1px; }
+  .pick-conf { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .green { color: var(--green); }
+  .yellow { color: var(--yellow); }
+  .red { color: var(--red); }
+
+  /* Analysis text */
+  .analysis-text { font-size: 12px; line-height: 1.8; color: #aaa; white-space: pre-wrap; }
+  .analysis-text h3 { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px;
+    color: var(--red); margin: 20px 0 8px; }
+  .analysis-text .highlight { color: var(--text); font-weight: 500; }
+
+  /* Parlay box */
+  .parlay-box { background: rgba(0,230,118,0.06); border: 1px solid rgba(0,230,118,0.2);
+    padding: 16px; border-radius: 4px; margin-bottom: 12px; }
+  .parlay-title { font-size: 9px; letter-spacing: 3px; color: var(--green); margin-bottom: 10px; text-transform: uppercase; }
+
+  /* Copy btn */
+  .copy-btn { background: transparent; border: 1px solid var(--border); color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px;
+    padding: 6px 14px; cursor: pointer; border-radius: 2px; transition: all 0.2s; }
+  .copy-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* Disclaimer */
+  .disclaimer { font-size: 9px; color: var(--muted); text-align: center; padding: 20px 0; letter-spacing: 1px; line-height: 1.6; }
+
+  /* Spinner */
+  .spin { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+    border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Safe area */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .wrap { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">SportIQ</div>
+    <div class="tagline">Análisis deportivo · IA · 14 factores</div>
+  </div>
+
+  <!-- Sport selector -->
+  <div class="sport-wrap" id="sportWrap">
+    <button class="sport-pill active" data-sport="NHL Hockey">🏒 NHL</button>
+    <button class="sport-pill" data-sport="NBA Basketball">🏀 NBA</button>
+    <button class="sport-pill" data-sport="NFL Football">🏈 NFL</button>
+    <button class="sport-pill" data-sport="MLB Baseball">⚾ MLB</button>
+    <button class="sport-pill" data-sport="Fútbol Soccer">⚽ Soccer</button>
+    <button class="sport-pill" data-sport="Boxing MMA">🥊 MMA</button>
+    <button class="sport-pill" data-sport="Tennis">🎾 Tennis</button>
+  </div>
+
+  <!-- Main input -->
+  <div class="card">
+    <div class="card-label">Partido</div>
+    <div class="input-row">
+      <input type="text" id="team1" placeholder="Equipo local"/>
+      <input type="text" id="team2" placeholder="Equipo visitante"/>
+    </div>
+    <div class="input-full">
+      <input type="text" id="context" placeholder="Contexto (ej. Playoffs Ronda 1 Juego 3)"/>
+    </div>
+  </div>
+
+  <!-- Injuries / key data -->
+  <div class="card">
+    <div class="card-label">Bajas y lesiones</div>
+    <div class="input-full">
+      <textarea id="injuries1" placeholder="Lesionados equipo local (ej. MacKinnon — dudoso, Makar — OUT)" rows="2"></textarea>
+    </div>
+    <div class="input-full">
+      <textarea id="injuries2" placeholder="Lesionados equipo visitante" rows="2"></textarea>
+    </div>
+  </div>
+
+  <!-- Odds -->
+  <div class="card">
+    <div class="card-label">Odds actuales</div>
+    <div class="input-row">
+      <div>
+        <input type="text" id="ml1" placeholder="ML local (ej. -140)"/>
+        <div class="input-hint">Moneyline local</div>
+      </div>
+      <div>
+        <input type="text" id="ml2" placeholder="ML visitante (ej. +120)"/>
+        <div class="input-hint">Moneyline visitante</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <div>
+        <input type="text" id="spread" placeholder="Spread (ej. -1.5)"/>
+        <div class="input-hint">Puck/Run line</div>
+      </div>
+      <div>
+        <input type="text" id="total" placeholder="Total (ej. 5.5)"/>
+        <div class="input-hint">Over/Under</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Extra info toggle -->
+  <button class="toggle-btn" onclick="toggleExtra()">
+    <span>+ DATOS EXTRA (forma reciente, clima, notas)</span>
+    <span id="toggleIcon">▼</span>
+  </button>
+  <div class="extra-fields" id="extraFields">
+    <div class="card">
+      <div class="card-label">Forma reciente</div>
+      <div class="input-full">
+        <textarea id="form1" placeholder="Últimos 5 partidos local (ej. G-G-P-G-P, promedio 3.2 goles anotados)" rows="2"></textarea>
+      </div>
+      <div class="input-full">
+        <textarea id="form2" placeholder="Últimos 5 partidos visitante" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Datos adicionales</div>
+      <div class="input-full">
+        <textarea id="extra" placeholder="Head to head, clima, motivación, notas del entrenador, situación de temporada, cualquier cosa relevante..." rows="3"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <button class="cta" id="analyzeBtn" onclick="analyze()">
+    ⚡ ANALIZAR PARTIDO
+  </button>
+
+  <!-- Loader -->
+  <div class="loader" id="loader">
+    <div class="loader-bar"></div>
+    <div class="loader-text">PROCESANDO ANÁLISIS COMPLETO</div>
+    <div class="loader-steps" id="loaderSteps"></div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div style="margin-top:24px;">
+      <div class="result-header">
+        <div class="result-title">📊 ANÁLISIS COMPLETO</div>
+        <button class="copy-btn" onclick="copyAll()">Copiar</button>
+      </div>
+
+      <!-- Verdict -->
+      <div class="verdict-box" id="verdictBox">
+        <div class="pick-label">GANADOR MÁS PROBABLE</div>
+        <div class="verdict-team" id="verdictTeam">—</div>
+        <div class="verdict-conf" id="verdictConf">—</div>
+      </div>
+
+      <!-- Picks grid -->
+      <div class="picks-grid">
+        <div class="pick-card">
+          <div class="pick-label">Moneyline</div>
+          <div class="pick-value green" id="pickML">—</div>
+          <div class="pick-conf" id="pickMLConf"></div>
+        </div>
+        <div class="pick-card">
+          <div class="pick-label">Over / Under</div>
+          <div class="pick-value yellow" id="pickOU">—</div>
+          <div class="pick-conf" id="pickOUConf"></div>
+        </div>
+        <div class="pick-card">
+          <div class="pick-label">Spread</div>
+          <div class="pick-value" id="pickSpread">—</div>
+          <div class="pick-conf" id="pickSpreadConf"></div>
+        </div>
+        <div class="pick-card">
+          <div class="pick-label">Confianza global</div>
+          <div class="pick-value red" id="pickConf">—</div>
+          <div class="pick-conf">Del análisis IA</div>
+        </div>
+      </div>
+
+      <!-- Parlay -->
+      <div class="parlay-box">
+        <div class="parlay-title">🃏 Parlay sugerido</div>
+        <div class="analysis-text" id="parlayText">—</div>
+      </div>
+
+      <!-- Full analysis -->
+      <div class="card">
+        <div class="card-label">Análisis detallado</div>
+        <div class="analysis-text" id="fullAnalysis"></div>
+      </div>
+
+      <div class="disclaimer">
+        SportIQ no garantiza resultados · El deporte tiene aleatoriedad real<br/>
+        Apuesta solo lo que puedes perder · +18
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API_KEY = "AIzaSyAUTscIp6imrXDm8fu4mM762ioHBn-Ufxo";
+let selectedSport = "NHL Hockey";
+let fullText = "";
+
+// Sport pills
+document.querySelectorAll('.sport-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sport-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedSport = btn.dataset.sport;
+  });
+});
+
+function toggleExtra() {
+  const el = document.getElementById('extraFields');
+  const icon = document.getElementById('toggleIcon');
+  el.classList.toggle('open');
+  icon.textContent = el.classList.contains('open') ? '▲' : '▼';
+}
+
+function val(id) { return document.getElementById(id)?.value?.trim() || ''; }
+
+async function analyze() {
+  const team1 = val('team1');
+  const team2 = val('team2');
+  if (!team1 || !team2) { alert('Pon los dos equipos pa'); return; }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> ANALIZANDO...';
+
+  document.getElementById('loader').classList.add('show');
+  document.getElementById('results').classList.remove('show');
+
+  // Animated steps
+  const steps = [
+    'Analizando estadísticas ofensivas y defensivas...',
+    'Revisando forma reciente y H2H...',
+    'Evaluando lesiones y factores externos...',
+    'Procesando líneas y movimiento de apuestas...',
+    'Calculando props y parlay óptimo...',
+    'Generando veredicto final...'
+  ];
+  const stepsEl = document.getElementById('loaderSteps');
+  stepsEl.innerHTML = '';
+  steps.forEach((s, i) => {
+    const d = document.createElement('div');
+    d.className = 'loader-step';
+    d.textContent = s;
+    d.style.animationDelay = `${i * 0.8}s`;
+    stepsEl.appendChild(d);
+  });
+
+  const prompt = buildPrompt(team1, team2);
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 3000 }
+      })
+    });
+
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta de la IA.';
+    fullText = text;
+    renderResults(text, team1, team2);
+
+  } catch(e) {
+    alert('Error al conectar. Revisa tu conexión e intenta de nuevo.');
+    console.error(e);
+  }
+
+  document.getElementById('loader').classList.remove('show');
+  btn.disabled = false;
+  btn.innerHTML = '⚡ ANALIZAR PARTIDO';
+  document.getElementById('results').classList.add('show');
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function buildPrompt(team1, team2) {
+  const context = val('context');
+  const injuries1 = val('injuries1');
+  const injuries2 = val('injuries2');
+  const ml1 = val('ml1');
+  const ml2 = val('ml2');
+  const spread = val('spread');
+  const total = val('total');
+  const form1 = val('form1');
+  const form2 = val('form2');
+  const extra = val('extra');
+
+  return `Eres el mejor analista deportivo del mundo especializado en apuestas. Analiza este partido de ${selectedSport} con MÁXIMO detalle y precisión.
+
+PARTIDO: ${team1} (LOCAL) vs ${team2} (VISITANTE)
+CONTEXTO: ${context || 'No especificado'}
+
+DATOS PROPORCIONADOS:
+- Lesiones ${team1}: ${injuries1 || 'No especificadas'}
+- Lesiones ${team2}: ${injuries2 || 'No especificadas'}
+- Moneyline local: ${ml1 || 'No disponible'}
+- Moneyline visitante: ${ml2 || 'No disponible'}
+- Spread/Line: ${spread || 'No disponible'}
+- Total O/U: ${total || 'No disponible'}
+- Forma reciente ${team1}: ${form1 || 'No especificada'}
+- Forma reciente ${team2}: ${form2 || 'No especificada'}
+- Datos adicionales: ${extra || 'Ninguno'}
+
+ANALIZA LOS SIGUIENTES 14 FACTORES:
+1. Estadísticas ofensivas (goles/puntos anotados, xG, efectividad)
+2. Estadísticas defensivas (goles/puntos permitidos, solidez)
+3. Forma reciente (últimos 5-10 partidos, rachas)
+4. Head-to-head histórico (últimos 5-10 enfrentamientos directos)
+5. Ventaja local/visitante (récord en casa vs fuera)
+6. Lesiones y bajas (impacto real en el rendimiento)
+7. Fatiga y carga de juego (back-to-backs, minutos acumulados)
+8. Motivación y contexto (playoffs, clasificación, descenso)
+9. Tácticas y estilos de juego (matchups clave, pace)
+10. Árbitros/oficiales (tendencias si aplica)
+11. Clima y condiciones externas (si aplica)
+12. Movimiento de líneas y apuestas (sharp money, valor)
+13. Factores psicológicos (momentum, presión, rivalidad)
+14. Tendencias de totales (Over/Under histórico entre estos equipos)
+
+RESPONDE EXACTAMENTE EN ESTE FORMATO JSON (solo JSON, sin texto extra, sin backticks):
+{
+  "ganador": "${team1} o ${team2}",
+  "confianza": "XX%",
+  "razon_principal": "2-3 oraciones explicando el pick principal",
+  "moneyline_pick": "nombre del equipo o ML",
+  "moneyline_confianza": "XX%",
+  "over_under_pick": "Over X.X o Under X.X",
+  "over_under_confianza": "XX%",
+  "over_under_razon": "1-2 oraciones",
+  "spread_pick": "equipo -X.X o +X.X",
+  "spread_confianza": "XX%",
+  "confianza_global": "XX%",
+  "parlay": "descripción del parlay sugerido con cuota estimada",
+  "props": ["prop 1 con confianza", "prop 2 con confianza", "prop 3 con confianza"],
+  "analisis_completo": "análisis detallado de los 14 factores en texto largo, mínimo 400 palabras, con secciones claramente marcadas con ### para cada factor relevante",
+  "factores_riesgo": "principales variables que podrían invalidar el análisis",
+  "resumen": "resumen ejecutivo de 3-4 oraciones en lenguaje simple"
+}`;
+}
+
+function renderResults(text, team1, team2) {
+  let data;
+  try {
+    const clean = text.replace(/```json|```/g, '').trim();
+    data = JSON.parse(clean);
+  } catch(e) {
+    // Fallback: show raw text
+    document.getElementById('verdictTeam').textContent = 'Ver análisis abajo';
+    document.getElementById('verdictConf').textContent = '';
+    document.getElementById('fullAnalysis').textContent = text;
+    return;
+  }
+
+  document.getElementById('verdictTeam').textContent = data.ganador || '—';
+  document.getElementById('verdictConf').textContent = `Confianza: ${data.confianza || '—'} · ${data.razon_principal || ''}`;
+  document.getElementById('pickML').textContent = data.moneyline_pick || '—';
+  document.getElementById('pickMLConf').textContent = `Confianza: ${data.moneyline_confianza || '—'}`;
+  document.getElementById('pickOU').textContent = data.over_under_pick || '—';
+  document.getElementById('pickOUConf').textContent = `${data.over_under_confianza || '—'} · ${data.over_under_razon || ''}`;
+  document.getElementById('pickSpread').textContent = data.spread_pick || '—';
+  document.getElementById('pickSpreadConf').textContent = `Confianza: ${data.spread_confianza || '—'}`;
+  document.getElementById('pickConf').textContent = data.confianza_global || '—';
+
+  // Parlay
+  let parlayHtml = `<div>${data.parlay || '—'}</div>`;
+  if (data.props?.length) {
+    parlayHtml += `<div style="margin-top:10px;font-size:10px;color:var(--muted);letter-spacing:1px;">PROPS RECOMENDADOS:</div>`;
+    data.props.forEach(p => {
+      parlayHtml += `<div style="font-size:12px;color:#ccc;padding:3px 0;">→ ${p}</div>`;
+    });
+  }
+  document.getElementById('parlayText').innerHTML = parlayHtml;
+
+  // Full analysis
+  let analysis = data.analisis_completo || '';
+  if (data.factores_riesgo) analysis += `\n\n### ⚠️ FACTORES DE RIESGO\n${data.factores_riesgo}`;
+  if (data.resumen) analysis += `\n\n### 📌 RESUMEN EJECUTIVO\n${data.resumen}`;
+  
+  // Format headers
+  const formatted = analysis.replace(/### /g, '\n\n').split('\n').map(line => {
+    if (line.startsWith('⚠️') || line.startsWith('📌') || line.startsWith('🏒') || 
+        line.match(/^\d+\./) || line.includes('FACTOR') || line.includes('ANÁLISIS')) {
+      return `<h3>${line}</h3>`;
+    }
+    return line;
+  }).join('\n');
+
+  document.getElementById('fullAnalysis').innerHTML = formatted;
+}
+
+function copyAll() {
+  navigator.clipboard.writeText(fullText || 'Sin análisis');
+  const btn = event.target;
+  btn.textContent = '✓ Copiado';
+  setTimeout(() => btn.textContent = 'Copiar', 2000);
+}
+</script>
+</body>
+</html>
